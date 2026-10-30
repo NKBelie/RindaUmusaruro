@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useApp } from "../../contexts/AppContext";
 import { Brand, Badge } from "../../components/common/UI";
-import { locations, photos } from "../../data/demo";
+import { photos } from "../../data/demo";
+import { rwandaDistricts, districtNames } from "../../data/rwanda";
 import { uid } from "../../services/mock";
 import type { Role, User } from "../../types";
 interface Credential {
@@ -28,9 +29,8 @@ export default function Auth() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [show, setShow] = useState(false);
-  const [province, setProvince] = useState("Eastern");
-  const [district, setDistrict] = useState("Rwamagana");
-  const [sector, setSector] = useState("Muhazi");
+  const [district, setDistrict] = useState("");
+  const [sector, setSector] = useState("");
   const [identifier, setIdentifier] = useState("");
   const title = register
     ? "Your next chapter starts here."
@@ -95,7 +95,7 @@ export default function Auth() {
               : forgot
                 ? "Enter your registered phone or email to simulate password recovery."
                 : reset
-                  ? "This reset changes only this browser’s prototype account."
+                  ? "This reset changes only this browser's prototype account."
                   : "A little clarity for your fields. A little confidence for your day."}
           </p>
           {!register && !forgot && !reset && (
@@ -141,6 +141,14 @@ export default function Auth() {
                   setError("The passwords do not match.");
                   return;
                 }
+                if (!district || !sector) {
+                  setError("Please select both a district and a sector.");
+                  return;
+                }
+                if (!rwandaDistricts[district]?.sectors.includes(sector)) {
+                  setError("The selected sector does not belong to the selected district.");
+                  return;
+                }
                 const phone = String(f.get("phone"));
                 const email = String(f.get("email"));
                 if (
@@ -160,7 +168,7 @@ export default function Auth() {
                   email,
                   role: "farmer",
                   district,
-                  province,
+                  province: rwandaDistricts[district].province,
                   sector,
                   village: String(f.get("village")),
                   language: String(f.get("language")),
@@ -316,32 +324,16 @@ export default function Auth() {
             {register && (
               <div className="form-grid">
                 <label>
-                  {t("Province")}
-                  <select
-                    value={province}
-                    onChange={(e) => {
-                      const p = e.target.value;
-                      const d = Object.keys(locations[p])[0];
-                      setProvince(p);
-                      setDistrict(d);
-                      setSector(locations[p][d][0]);
-                    }}
-                  >
-                    {Object.keys(locations).map((p) => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
                   {t("District")}
                   <select
                     value={district}
                     onChange={(e) => {
                       setDistrict(e.target.value);
-                      setSector(locations[province][e.target.value][0]);
+                      setSector("");
                     }}
                   >
-                    {Object.keys(locations[province]).map((d) => (
+                    <option value="">Select District</option>
+                    {districtNames.map((d) => (
                       <option key={d}>{d}</option>
                     ))}
                   </select>
@@ -350,11 +342,14 @@ export default function Auth() {
                   {t("Sector")}
                   <select
                     value={sector}
+                    disabled={!district}
                     onChange={(e) => setSector(e.target.value)}
                   >
-                    {locations[province][district].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
+                    <option value="">Select Sector</option>
+                    {district &&
+                      rwandaDistricts[district].sectors.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
                   </select>
                 </label>
                 <label>
@@ -369,8 +364,7 @@ export default function Auth() {
                   </select>
                 </label>
                 <p className="form-hint full">
-                  Sample location directory for demonstration. Province,
-                  district, and sector choices are dependent.
+                  All 30 districts of Rwanda. Select a district to see its sectors.
                 </p>
               </div>
             )}
